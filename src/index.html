@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nostr Event Explorer</title>
+
+    <!-- TailwindCSS (Play CDN for demo) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+      :root {
+        --accent-purple: #a855f7;
+        --accent-orange: #f97316;
+      }
+      body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        margin: 0;
+      }
+      .accent-gradient {
+        background: linear-gradient(90deg, var(--accent-purple), var(--accent-orange));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+    </style>
+  </head>
+
+  <body class="bg-gray-900 text-gray-200">
+    <main id="app" class="w-full max-w-sm p-6 space-y-6 text-center">
+      <h1 class="text-3xl font-extrabold accent-gradient">Nostr Event Explorer</h1>
+      <p class="text-gray-400">Enter a relay URL and an event ID (hex, note1..., or nevent1...). If an nevent is provided with relays, those will be used; otherwise, the specified relay will be used.</p>
+      <form id="form" class="space-y-4">
+        <input
+          id="relay"
+          type="text"
+          placeholder="wss://relay.example.com"
+          class="w-full px-4 py-2 rounded-lg bg-gray-800 text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-600"
+        />
+        <input
+          id="eventId"
+          type="text"
+          placeholder="Event ID (hex, note1..., nevent1...)"
+          class="w-full px-4 py-2 rounded-lg bg-gray-800 text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-600"
+        />
+        <button
+          type="submit"
+          class="w-full py-2 rounded-lg bg-gradient-to-r from-purple-600 to-orange-500 text-white font-semibold transition active:scale-95"
+        >
+          Fetch Event
+        </button>
+      </form>
+      <div id="result"></div>
+    </main>
+
+    <script type="module">
+      import { nip19, SimplePool } from "https://esm.sh/nostr-tools@1.7.5?bundle";
+
+      const TIMEOUT_MS = 8000;
+
+      document.getElementById("form").onsubmit = async (e) => {
+        e.preventDefault();
+
+        const relay = document.getElementById("relay").value.trim();
+        const eventIdInput = document.getElementById("eventId").value.trim();
+        const resultDiv = document.getElementById("result");
+        resultDiv.innerHTML = "";
+
+        const eventIdInputClean = eventIdInput.startsWith("nostr:") ? eventIdInput.slice(6) : eventIdInput;
+
+        let eventId;
+        let relaysToUse;
+
+        if (eventIdInputClean.startsWith("nevent1")) {
+          try {
+            const dec = nip19.decode(eventIdInputClean);
+            if (dec.type === "nevent") {
+              eventId = dec.data.id;
+              relaysToUse = dec.data.relays && dec.data.relays.length > 0 ? dec.data.relays : [relay];
+            } else {
+              showError("Invalid nevent");
+              return;
+            }
+          } catch {
+            showError("Invalid nevent");
+            return;
+          }
+        } else if (eventIdInputClean.startsWith("note1")) {
+          try {
+            const dec = nip19.decode(eventIdInputClean);
+            if (dec.type === "note") {
+              eventId = dec.data;
+              relaysToUse = [relay];
+            } else {
+              showError("Invalid note bech32");
+              return;
+            }
+          } catch {
+            showError("Invalid note bech32");
+            return;
+          }
+        } else {
+          if (!/^[0-9a-f]{64}$/.test(eventIdInputClean)) {
+            showError("Invalid event ID: must be 64 hex characters");
+            return;
+          }
+          eventId = eventIdInputClean;
+          relaysToUse = [relay];
+        }
+
+        // Check if relaysToUse are valid
+        if (relaysToUse.some(r => !r.startsWith("wss://"))) {
+          showError("Invalid relay URL: must start with wss://");
+          return;
+        }
+
+        // Fetch the event
+        resultDiv.innerHTML = "<p>Loading...</p>";
+        try {
+          const pool = new SimplePool();
+          const sub = pool.sub(relaysToUse, [{ ids: [eventId] }]);
+          let event = null;
+
+          const timer = setTimeout(() => {
+            sub.unsub();
+            pool.close();
+            showError("Timeout: event not found");
+          }, TIMEOUT_MS);
+
+          sub.on("event", (ev) => {
+            clearTimeout(timer);
+            event = ev;
+            sub.unsub();
+            pool.close();
+            displayEvent(event);
+          });
+
+          sub.on("eose", () => {
+            if (!event) {
+              showError("Event not found");
+            }
+          });
+        } catch (e) {
+          showError("Error: " + e.message);
+        }
+      };
+
+      function displayEvent(event) {
+        const resultDiv = document.getElementById("result");
+        resultDiv.innerHTML = `<pre class="bg-gray-800 p-4 rounded-lg overflow-auto">${JSON.stringify(event, null, 2)}</pre>`;
+      }
+
+      function showError(msg) {
+        const resultDiv = document.getElementById("result");
+        resultDiv.innerHTML = `<p class="text-red-500">${msg}</p>`;
+      }
+    </script>
+  </body>
+</html>
