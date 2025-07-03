@@ -32,7 +32,7 @@
   <body class="bg-gray-900 text-gray-200">
     <main id="app" class="w-full max-w-sm p-6 space-y-6 text-center">
       <h1 class="text-3xl font-extrabold accent-gradient">Nostr Event Explorer</h1>
-      <p class="text-gray-400">Enter a relay URL and an event ID (hex, note1..., or nevent1...). If an nevent is provided with relays, those will be used; otherwise, the specified relay will be used.</p>
+      <p class="text-gray-400">Enter a relay URL (optional if using nevent with relays) and an event ID (hex, note1..., or nevent1...).</p>
       <form id="form" class="space-y-4">
         <input
           id="relay"
@@ -79,7 +79,15 @@
             const dec = nip19.decode(eventIdInputClean);
             if (dec.type === "nevent") {
               eventId = dec.data.id;
-              relaysToUse = dec.data.relays && dec.data.relays.length > 0 ? dec.data.relays : [relay];
+              if (dec.data.relays && dec.data.relays.length > 0) {
+                relaysToUse = dec.data.relays;
+              } else {
+                if (!relay) {
+                  showError("Please provide a relay URL");
+                  return;
+                }
+                relaysToUse = [relay];
+              }
             } else {
               showError("Invalid nevent");
               return;
@@ -88,36 +96,39 @@
             showError("Invalid nevent");
             return;
           }
-        } else if (eventIdInputClean.startsWith("note1")) {
-          try {
-            const dec = nip19.decode(eventIdInputClean);
-            if (dec.type === "note") {
-              eventId = dec.data;
-              relaysToUse = [relay];
-            } else {
+        } else {
+          if (!relay) {
+            showError("Please provide a relay URL");
+            return;
+          }
+          if (eventIdInputClean.startsWith("note1")) {
+            try {
+              const dec = nip19.decode(eventIdInputClean);
+              if (dec.type === "note") {
+                eventId = dec.data;
+              } else {
+                showError("Invalid note bech32");
+                return;
+              }
+            } catch {
               showError("Invalid note bech32");
               return;
             }
-          } catch {
-            showError("Invalid note bech32");
-            return;
+          } else {
+            if (!/^[0-9a-f]{64}$/.test(eventIdInputClean)) {
+              showError("Invalid event ID: must be 64 hex characters");
+              return;
+            }
+            eventId = eventIdInputClean;
           }
-        } else {
-          if (!/^[0-9a-f]{64}$/.test(eventIdInputClean)) {
-            showError("Invalid event ID: must be 64 hex characters");
-            return;
-          }
-          eventId = eventIdInputClean;
           relaysToUse = [relay];
         }
 
-        // Check if relaysToUse are valid
         if (relaysToUse.some(r => !r.startsWith("wss://"))) {
           showError("Invalid relay URL: must start with wss://");
           return;
         }
 
-        // Fetch the event
         resultDiv.innerHTML = "<p>Loading...</p>";
         try {
           const pool = new SimplePool();
@@ -126,7 +137,7 @@
 
           const timer = setTimeout(() => {
             sub.unsub();
-            pool.close();
+            pool.close(relaysToUse);
             showError("Timeout: event not found");
           }, TIMEOUT_MS);
 
@@ -134,7 +145,7 @@
             clearTimeout(timer);
             event = ev;
             sub.unsub();
-            pool.close();
+            pool.close(relaysToUse);
             displayEvent(event);
           });
 
