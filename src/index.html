@@ -17,7 +17,6 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        justify-content: center;
         min-height: 100vh;
         margin: 0;
       }
@@ -26,26 +25,136 @@
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
       }
+      .spin {
+        animation: spin 0.8s linear infinite;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      pre {
+        scrollbar-width: thin;
+      }
+      /* Rendered Markdown (long-form / NIP-23) */
+      .md {
+        line-height: 1.6;
+      }
+      .md h1,
+      .md h2,
+      .md h3,
+      .md h4 {
+        font-weight: 700;
+        margin: 0.9em 0 0.4em;
+        line-height: 1.25;
+      }
+      .md h1 {
+        font-size: 1.5rem;
+      }
+      .md h2 {
+        font-size: 1.3rem;
+      }
+      .md h3 {
+        font-size: 1.1rem;
+      }
+      .md p {
+        margin: 0.6em 0;
+      }
+      .md a {
+        color: #c084fc;
+        text-decoration: underline;
+        word-break: break-word;
+      }
+      .md ul,
+      .md ol {
+        margin: 0.6em 0;
+        padding-left: 1.4em;
+      }
+      .md ul {
+        list-style: disc;
+      }
+      .md ol {
+        list-style: decimal;
+      }
+      .md blockquote {
+        border-left: 3px solid #7c3aed;
+        padding-left: 0.8em;
+        color: #9ca3af;
+        margin: 0.6em 0;
+      }
+      .md code {
+        background: #111827;
+        padding: 0.1em 0.3em;
+        border-radius: 4px;
+        font-size: 0.9em;
+      }
+      .md pre {
+        background: #111827;
+        padding: 0.8em;
+        border-radius: 8px;
+        overflow: auto;
+      }
+      .md pre code {
+        background: none;
+        padding: 0;
+      }
+      .md img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 8px;
+        margin: 0.6em 0;
+      }
+      .md hr {
+        border-color: #374151;
+        margin: 1em 0;
+      }
     </style>
   </head>
 
   <body class="bg-gray-900 text-gray-200">
-    <main id="app" class="w-full max-w-sm p-6 space-y-6 text-center">
-      <h1 class="text-3xl font-extrabold accent-gradient">Nostr Event Explorer</h1>
-      <p class="text-gray-400">Enter a relay URL (optional if using nevent with relays) and an event ID (hex, note1..., or nevent1...).</p>
+    <main id="app" class="w-full max-w-3xl p-6 space-y-6">
+      <header class="text-center space-y-2">
+        <h1 class="text-3xl font-extrabold accent-gradient">Nostr Event Explorer</h1>
+        <p class="text-gray-400 text-sm">
+          Paste an event ID (hex, <code>note1</code>, <code>nevent1</code>),
+          an addressable coordinate (<code>naddr1</code>), or a profile
+          (<code>npub1</code>, <code>nprofile1</code>). Relays are optional —
+          sensible defaults are used.
+        </p>
+      </header>
+
       <form id="form" class="space-y-4">
-        <input
-          id="relay"
-          type="text"
-          placeholder="wss://relay.example.com"
-          class="w-full px-4 py-2 rounded-lg bg-gray-800 text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-600"
-        />
         <input
           id="eventId"
           type="text"
-          placeholder="Event ID (hex, note1..., nevent1...)"
+          placeholder="note1… / nevent1… / naddr1… / npub1… / 64-char hex"
+          autocomplete="off"
+          spellcheck="false"
           class="w-full px-4 py-2 rounded-lg bg-gray-800 text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-600"
         />
+
+        <details class="bg-gray-800/60 rounded-lg">
+          <summary class="cursor-pointer select-none px-4 py-2 text-sm text-gray-300 flex items-center justify-between">
+            <span>Relays <span id="relayCount" class="text-gray-500"></span></span>
+            <span class="text-xs text-purple-400">edit</span>
+          </summary>
+          <div class="px-4 pb-4 space-y-2">
+            <textarea
+              id="relays"
+              rows="5"
+              spellcheck="false"
+              placeholder="wss://relay.example.com"
+              class="w-full px-3 py-2 text-sm font-mono rounded-lg bg-gray-900 text-gray-200 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-600"
+            ></textarea>
+            <div class="flex items-center justify-between text-xs">
+              <span class="text-gray-500">One relay per line (wss:// or ws://). Saved in your browser.</span>
+              <button type="button" id="resetRelays" class="text-purple-400 hover:text-purple-300 underline">
+                Reset to defaults
+              </button>
+            </div>
+          </div>
+        </details>
+
         <button
           type="submit"
           class="w-full py-2 rounded-lg bg-gradient-to-r from-purple-600 to-orange-500 text-white font-semibold transition active:scale-95"
@@ -53,126 +162,928 @@
           Fetch Event
         </button>
       </form>
+
       <div id="result"></div>
     </main>
+
     <footer class="mt-auto mb-2 text-center text-xs text-gray-500 opacity-70">
       Enjoying this?&nbsp;
       <a href="https://nostrtipjar.netlify.app/?n=npub15jnttpymeytm80hatjqcvhhqhzrhx6gxp8pq0wn93rhnu8s9h9dsha32lx" class="underline hover:text-purple-400">Leave a tip!</a>
       &nbsp;•&nbsp;
       <a href="https://github.com/PR0M3TH3AN/Nostr-Event-Explorer" class="underline hover:text-purple-400" target="_blank" rel="noopener">GitHub</a>
     </footer>
+
     <script type="module">
-      import { nip19, SimplePool } from "https://esm.sh/nostr-tools@1.7.5?bundle";
+      import { SimplePool, nip19, verifyEvent } from "https://esm.sh/nostr-tools@2.10.4";
+      import { marked } from "https://esm.sh/marked@12";
+      import DOMPurify from "https://esm.sh/dompurify@3";
 
       const TIMEOUT_MS = 8000;
+      const RELAY_KEY = "nee_relays_v1";
+      const RAW_DISPLAY_LIMIT = 200_000; // chars shown in the raw pane (copy is always full)
+      const DEFAULT_RELAYS = [
+        "wss://relay.damus.io",
+        "wss://nos.lol",
+        "wss://relay.primal.net",
+        "wss://relay.nostr.band",
+        "wss://nostr.mom",
+      ];
 
-      document.getElementById("form").onsubmit = async (e) => {
-        e.preventDefault();
-
-        const relay = document.getElementById("relay").value.trim();
-        const eventIdInput = document.getElementById("eventId").value.trim();
-        const resultDiv = document.getElementById("result");
-        resultDiv.innerHTML = "";
-
-        const eventIdInputClean = eventIdInput.startsWith("nostr:") ? eventIdInput.slice(6) : eventIdInput;
-
-        let eventId;
-        let relaysToUse;
-
-        if (eventIdInputClean.startsWith("nevent1")) {
-          try {
-            const dec = nip19.decode(eventIdInputClean);
-            if (dec.type === "nevent") {
-              eventId = dec.data.id;
-              if (dec.data.relays && dec.data.relays.length > 0) {
-                relaysToUse = dec.data.relays;
-              } else {
-                if (!relay) {
-                  showError("Please provide a relay URL");
-                  return;
-                }
-                relaysToUse = [relay];
-              }
-            } else {
-              showError("Invalid nevent");
-              return;
-            }
-          } catch {
-            showError("Invalid nevent");
-            return;
-          }
-        } else {
-          if (!relay) {
-            showError("Please provide a relay URL");
-            return;
-          }
-          if (eventIdInputClean.startsWith("note1")) {
-            try {
-              const dec = nip19.decode(eventIdInputClean);
-              if (dec.type === "note") {
-                eventId = dec.data;
-              } else {
-                showError("Invalid note bech32");
-                return;
-              }
-            } catch {
-              showError("Invalid note bech32");
-              return;
-            }
-          } else {
-            if (!/^[0-9a-f]{64}$/.test(eventIdInputClean)) {
-              showError("Invalid event ID: must be 64 hex characters");
-              return;
-            }
-            eventId = eventIdInputClean;
-          }
-          relaysToUse = [relay];
+      // Make rendered markdown links/images safe + well-behaved.
+      DOMPurify.addHook("afterSanitizeAttributes", (node) => {
+        if (node.tagName === "A") {
+          node.setAttribute("target", "_blank");
+          node.setAttribute("rel", "noopener noreferrer nofollow");
         }
-
-        if (relaysToUse.some(r => !r.startsWith("wss://"))) {
-          showError("Invalid relay URL: must start with wss://");
-          return;
+        if (node.tagName === "IMG") {
+          node.setAttribute("loading", "lazy");
+          node.setAttribute("referrerpolicy", "no-referrer");
         }
+      });
 
-        resultDiv.innerHTML = "<p>Loading...</p>";
-        try {
-          const pool = new SimplePool();
-          const sub = pool.sub(relaysToUse, [{ ids: [eventId] }]);
-          let event = null;
-
-          const timer = setTimeout(() => {
-            sub.unsub();
-            pool.close(relaysToUse);
-            showError("Timeout: event not found");
-          }, TIMEOUT_MS);
-
-          sub.on("event", (ev) => {
-            clearTimeout(timer);
-            event = ev;
-            sub.unsub();
-            pool.close(relaysToUse);
-            displayEvent(event);
-          });
-
-          sub.on("eose", () => {
-            if (!event) {
-              showError("Event not found");
-            }
-          });
-        } catch (e) {
-          showError("Error: " + e.message);
-        }
+      // ---- Event kind labels (NIP-defined) ----------------------------------
+      const KIND_NAMES = {
+        0: "Profile Metadata",
+        1: "Short Text Note",
+        2: "Recommend Relay",
+        3: "Follows / Contacts",
+        4: "Encrypted DM (NIP-04)",
+        5: "Event Deletion",
+        6: "Repost",
+        7: "Reaction",
+        8: "Badge Award",
+        9: "Group Chat Message",
+        13: "Seal (NIP-59)",
+        16: "Generic Repost",
+        40: "Channel Creation",
+        41: "Channel Metadata",
+        42: "Channel Message",
+        43: "Channel Hide Message",
+        44: "Channel Mute User",
+        20: "Picture (NIP-68)",
+        21: "Video",
+        22: "Short Video",
+        1059: "Gift Wrap (NIP-59)",
+        1063: "File Metadata",
+        1111: "Comment (NIP-22)",
+        1311: "Live Chat Message",
+        1984: "Report",
+        1985: "Label",
+        4550: "Community Post Approval",
+        9734: "Zap Request",
+        9735: "Zap Receipt",
+        10000: "Mute List",
+        10002: "Relay List Metadata",
+        10003: "Bookmark List",
+        13194: "Wallet Info",
+        22242: "Client Authentication",
+        24133: "Nostr Connect",
+        27235: "HTTP Auth",
+        30000: "Follow Set",
+        30001: "Bookmark Set",
+        30008: "Profile Badges",
+        30009: "Badge Definition",
+        30017: "Marketplace Stall",
+        30018: "Marketplace Product",
+        30023: "Long-form Article",
+        30024: "Long-form Draft",
+        30078: "App-specific Data",
+        31922: "Date-Based Calendar Event",
+        31923: "Time-Based Calendar Event",
+        31924: "Calendar",
+        31925: "Calendar Event RSVP",
+        34550: "Community Definition",
       };
 
-      function displayEvent(event) {
-        const resultDiv = document.getElementById("result");
-        resultDiv.innerHTML = `<pre class="bg-gray-800 p-4 rounded-lg overflow-auto">${JSON.stringify(event, null, 2)}</pre>`;
+      function kindLabel(kind) {
+        if (KIND_NAMES[kind]) return KIND_NAMES[kind];
+        if (kind >= 1000 && kind < 10000) return "Regular Event";
+        if (kind >= 10000 && kind < 20000) return "Replaceable Event";
+        if (kind >= 20000 && kind < 30000) return "Ephemeral Event";
+        if (kind >= 30000 && kind < 40000) return "Addressable Event";
+        return "Unknown Kind";
+      }
+
+      // ---- Known Nostr apps (NIP-89 client tag / payload heuristics) ---------
+      const CLIENTS = {
+        bitvid: {
+          label: "bitvid",
+          home: "https://bitvid.network",
+          view: (p) => (p.nevent ? `https://bitvid.network/?v=${encodeURIComponent(p.nevent)}` : null),
+        },
+        voxvera: {
+          label: "VoxVera",
+          home: "https://voxvera.org",
+          view: (p) => (p.naddr || p.nevent ? `https://voxvera.org/#${p.naddr || p.nevent}` : null),
+        },
+        artstr: {
+          label: "Artstr Studio",
+          home: "https://artstr.studio",
+          view: (p) => (p.naddr || p.nevent ? `https://artstr.studio/#/share/${p.naddr || p.nevent}` : null),
+        },
+      };
+
+      // ---- DOM helpers -------------------------------------------------------
+      const $ = (id) => document.getElementById(id);
+
+      function el(tag, className, text) {
+        const node = document.createElement(tag);
+        if (className) node.className = className;
+        if (text != null) node.textContent = text;
+        return node;
+      }
+
+      function anchor(href, text, className) {
+        const a = el("a", className || "text-purple-400 underline break-all hover:text-purple-300", text);
+        a.href = href;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer nofollow";
+        return a;
+      }
+
+      function short(str, head = 12, tail = 8) {
+        if (!str || str.length <= head + tail + 1) return str;
+        return `${str.slice(0, head)}…${str.slice(-tail)}`;
+      }
+      const shortNostr = (s) => short(s, 12, 6);
+      function shortUrl(url) {
+        try {
+          const u = new URL(url);
+          return u.hostname + (u.pathname !== "/" ? u.pathname : "");
+        } catch (_) {
+          return url;
+        }
+      }
+
+      function relativeTime(unixSeconds) {
+        const diff = Date.now() / 1000 - unixSeconds;
+        const abs = Math.abs(diff);
+        const steps = [
+          [60, 1, "second"],
+          [3600, 60, "minute"],
+          [86400, 3600, "hour"],
+          [2592000, 86400, "day"],
+          [31536000, 2592000, "month"],
+          [Infinity, 31536000, "year"],
+        ];
+        let value = Math.floor(abs),
+          unit = "second";
+        for (const [limit, div, name] of steps) {
+          if (abs < limit) {
+            value = Math.floor(abs / div);
+            unit = name;
+            break;
+          }
+        }
+        const plural = value === 1 ? "" : "s";
+        return diff >= 0 ? `${value} ${unit}${plural} ago` : `in ${value} ${unit}${plural}`;
+      }
+
+      async function copyText(text) {
+        try {
+          if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(text);
+            return true;
+          }
+        } catch (_) {}
+        try {
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          ta.style.position = "fixed";
+          ta.style.opacity = "0";
+          document.body.appendChild(ta);
+          ta.select();
+          const ok = document.execCommand("copy");
+          document.body.removeChild(ta);
+          return ok;
+        } catch (_) {
+          return false;
+        }
+      }
+
+      // ---- Tag + content helpers ---------------------------------------------
+      const tagValue = (event, name) => {
+        const t = (event.tags || []).find((x) => x[0] === name);
+        return t ? t[1] : undefined;
+      };
+      const tagValues = (event, name) =>
+        (event.tags || []).filter((x) => x[0] === name).map((x) => x[1]);
+
+      function parseContent(event) {
+        try {
+          return JSON.parse(event.content);
+        } catch (_) {
+          return null;
+        }
+      }
+
+      // NIP-92 imeta tags → [{url, m, image, alt, dim, ...}]
+      function parseImeta(event) {
+        return (event.tags || [])
+          .filter((t) => t[0] === "imeta")
+          .map((t) => {
+            const o = {};
+            for (let i = 1; i < t.length; i++) {
+              const sp = t[i].indexOf(" ");
+              if (sp > 0) {
+                const k = t[i].slice(0, sp);
+                const v = t[i].slice(sp + 1);
+                if (o[k] === undefined) o[k] = v;
+              }
+            }
+            return o;
+          });
+      }
+
+      // ---- Media classification + elements -----------------------------------
+      function mediaTypeFromUrl(url) {
+        try {
+          const p = new URL(url).pathname.toLowerCase();
+          if (/\.(png|jpe?g|gif|webp|avif|bmp|svg|ico)$/.test(p)) return "image";
+          if (/\.(mp4|webm|mov|m4v|ogv)$/.test(p)) return "video";
+          if (/\.(mp3|wav|ogg|oga|m4a|aac|flac|opus)$/.test(p)) return "audio";
+        } catch (_) {}
+        return null;
+      }
+      function mediaTypeFromMime(m) {
+        if (!m) return null;
+        if (m.startsWith("image/")) return "image";
+        if (m.startsWith("video/")) return "video";
+        if (m.startsWith("audio/")) return "audio";
+        return null;
+      }
+
+      function mediaElement(url, type, poster) {
+        if (type === "image") {
+          const img = el("img", "rounded-lg max-h-96 my-2 block bg-gray-900");
+          img.src = url;
+          img.loading = "lazy";
+          img.alt = "";
+          img.referrerPolicy = "no-referrer";
+          img.onerror = () => img.replaceWith(anchor(url, "🖼️ " + shortUrl(url)));
+          return img;
+        }
+        if (type === "video") {
+          const v = el("video", "rounded-lg max-h-96 my-2 w-full bg-black");
+          v.src = url;
+          v.controls = true;
+          v.preload = "metadata";
+          v.playsInline = true;
+          if (poster) v.poster = poster;
+          v.onerror = () => v.replaceWith(anchor(url, "🎬 " + shortUrl(url)));
+          return v;
+        }
+        if (type === "audio") {
+          const a = el("audio", "w-full my-2");
+          a.src = url;
+          a.controls = true;
+          a.preload = "metadata";
+          a.onerror = () => a.replaceWith(anchor(url, "🔊 " + shortUrl(url)));
+          return a;
+        }
+        return anchor(url, shortUrl(url));
+      }
+
+      const NOSTR_RE =
+        /(https?:\/\/[^\s<>"'`)\]]+)|((?:nostr:)?(?:npub1|nprofile1|note1|nevent1|naddr1)[023456789acdefghjklmnpqrstuvwxyz]+)/gi;
+
+      // Render free text: linkify URLs, embed media, link nostr: references.
+      function renderRichText(container, text, seen) {
+        seen = seen || new Set();
+        container.classList.add("whitespace-pre-wrap", "break-words");
+        let last = 0;
+        let m;
+        NOSTR_RE.lastIndex = 0;
+        while ((m = NOSTR_RE.exec(text)) !== null) {
+          if (m.index > last) container.appendChild(document.createTextNode(text.slice(last, m.index)));
+          if (m[1]) {
+            let url = m[1];
+            let trail = "";
+            const tm = url.match(/[.,;:!?)\]]+$/);
+            if (tm) {
+              trail = tm[0];
+              url = url.slice(0, -trail.length);
+            }
+            const type = mediaTypeFromUrl(url);
+            if (type && !seen.has(url)) {
+              seen.add(url);
+              container.appendChild(mediaElement(url, type));
+            } else {
+              container.appendChild(anchor(url, shortUrl(url)));
+            }
+            if (trail) container.appendChild(document.createTextNode(trail));
+          } else if (m[2]) {
+            const token = m[2].replace(/^nostr:/i, "");
+            container.appendChild(anchor(`https://njump.me/${token}`, shortNostr(token)));
+          }
+          last = NOSTR_RE.lastIndex;
+        }
+        if (last < text.length) container.appendChild(document.createTextNode(text.slice(last)));
+        return container;
+      }
+
+      // Append media declared in imeta / url tags (deduped against `seen`).
+      function appendImetaMedia(container, event, seen) {
+        seen = seen || new Set();
+        const metas = parseImeta(event);
+        for (const meta of metas) {
+          const url = meta.url;
+          if (!url || seen.has(url)) continue;
+          seen.add(url);
+          const type = mediaTypeFromMime(meta.m) || mediaTypeFromUrl(url) || "image";
+          container.appendChild(mediaElement(url, type, meta.image || tagValue(event, "image")));
+        }
+      }
+
+      // ---- Section + label helpers -------------------------------------------
+      function section(label) {
+        const wrap = el("div", "space-y-1");
+        if (label) wrap.appendChild(el("div", "text-xs uppercase tracking-wide text-gray-500", label));
+        return wrap;
+      }
+      function badge(text, cls) {
+        return el("span", `px-2 py-0.5 rounded-md text-xs font-medium ${cls}`, text);
+      }
+
+      // ---- Pointers (nevent / naddr / note / njump) --------------------------
+      function buildPointers(event, relays) {
+        const hint = (relays || []).slice(0, 2);
+        const p = {};
+        try {
+          p.note = nip19.noteEncode(event.id);
+        } catch (_) {}
+        try {
+          p.nevent = nip19.neventEncode({ id: event.id, relays: hint, author: event.pubkey, kind: event.kind });
+        } catch (_) {}
+        if (event.kind >= 30000 && event.kind < 40000) {
+          const d = tagValue(event, "d") || "";
+          try {
+            p.naddr = nip19.naddrEncode({ identifier: d, pubkey: event.pubkey, kind: event.kind, relays: hint });
+          } catch (_) {}
+        }
+        return p;
+      }
+
+      // ---- Detect publishing app ---------------------------------------------
+      function detectClient(event, payload) {
+        const client = (tagValue(event, "client") || "").toLowerCase();
+        const ts = tagValues(event, "t").map((x) => x.toLowerCase());
+        if (client.includes("bitvid")) return "bitvid";
+        if (client.includes("voxvera") || ts.includes("voxvera")) return "voxvera";
+        if (client.includes("artstr") || ts.includes("casewrap")) return "artstr";
+        if (payload && typeof payload === "object") {
+          if (payload.type === "voxvera_flyer") return "voxvera";
+          if (payload.videoRootId !== undefined && (payload.url || payload.magnet)) return "bitvid";
+          if (payload.coverTemplate || payload.templateType || payload.templateMode) return "artstr";
+        }
+        return null;
+      }
+
+      // ---- Kind-specific renderers (return a DOM node, or null) --------------
+      function renderProfile(event) {
+        const p = parseContent(event);
+        if (!p) return null;
+        const card = el("div", "rounded-lg overflow-hidden bg-gray-900");
+        if (p.banner) {
+          const b = mediaElement(p.banner, "image");
+          b.className = "w-full max-h-40 object-cover block";
+          card.appendChild(b);
+        }
+        const body = el("div", "p-4 space-y-2");
+        const top = el("div", "flex items-center gap-3");
+        if (p.picture) {
+          const av = mediaElement(p.picture, "image");
+          av.className = "h-14 w-14 rounded-full object-cover bg-gray-800";
+          top.appendChild(av);
+        }
+        const names = el("div", "");
+        names.appendChild(el("div", "font-semibold text-gray-100", p.display_name || p.name || "Anonymous"));
+        if (p.nip05) names.appendChild(el("div", "text-xs text-gray-400", p.nip05));
+        top.appendChild(names);
+        body.appendChild(top);
+        if (p.about) {
+          const about = el("div", "text-sm text-gray-300");
+          renderRichText(about, p.about);
+          body.appendChild(about);
+        }
+        const links = el("div", "text-sm flex flex-wrap gap-3");
+        if (p.website) links.appendChild(anchor(p.website, "🔗 " + shortUrl(p.website)));
+        if (p.lud16) links.appendChild(el("span", "text-yellow-400", "⚡ " + p.lud16));
+        if (links.childNodes.length) body.appendChild(links);
+        card.appendChild(body);
+        return card;
+      }
+
+      function renderTextNote(event) {
+        const node = el("div", "text-sm text-gray-200");
+        const seen = new Set();
+        if (event.content) renderRichText(node, event.content, seen);
+        appendImetaMedia(node, event, seen);
+        return node.childNodes.length ? node : null;
+      }
+
+      function renderReaction(event) {
+        const wrap = el("div", "space-y-2");
+        let symbol = event.content || "+";
+        if (symbol === "+" || symbol === "") symbol = "❤️";
+        else if (symbol === "-") symbol = "👎";
+        const row = el("div", "flex items-center gap-3");
+        // Custom emoji (NIP-30): :shortcode: backed by an emoji tag.
+        const emojiMatch = symbol.match(/^:([a-z0-9_]+):$/i);
+        const emojiTag = emojiMatch && (event.tags || []).find((t) => t[0] === "emoji" && t[1] === emojiMatch[1]);
+        if (emojiTag) {
+          const img = mediaElement(emojiTag[2], "image");
+          img.className = "h-10 w-10 object-contain";
+          row.appendChild(img);
+        } else {
+          row.appendChild(el("span", "text-3xl", symbol));
+        }
+        const eId = tagValues(event, "e").pop();
+        if (eId) {
+          let nevent = "";
+          try {
+            nevent = nip19.neventEncode({ id: eId });
+          } catch (_) {}
+          const r = el("span", "text-sm text-gray-400");
+          r.append("reacted to ");
+          r.appendChild(anchor(`https://njump.me/${nevent || eId}`, "this event"));
+          row.appendChild(r);
+        }
+        wrap.appendChild(row);
+        return wrap;
+      }
+
+      function renderRepost(event, depth) {
+        const wrap = el("div", "space-y-2");
+        wrap.appendChild(el("div", "text-xs text-gray-500", "🔁 Reposted event"));
+        const nested = parseContent(event);
+        if (nested && nested.id && nested.kind !== undefined) {
+          const inner = el("div", "border border-gray-700 rounded-lg p-3 space-y-2");
+          inner.appendChild(
+            badge(`Kind ${nested.kind} · ${kindLabel(nested.kind)}`, "bg-gray-700 text-gray-200")
+          );
+          const preview = renderPreview(nested, (depth || 0) + 1);
+          if (preview) inner.appendChild(preview);
+          wrap.appendChild(inner);
+        } else {
+          const eId = tagValues(event, "e").pop();
+          if (eId) {
+            let nevent = "";
+            try {
+              nevent = nip19.neventEncode({ id: eId });
+            } catch (_) {}
+            wrap.appendChild(anchor(`https://njump.me/${nevent || eId}`, "View original event"));
+          }
+        }
+        return wrap;
+      }
+
+      function renderPicture(event) {
+        const wrap = el("div", "space-y-2");
+        const title = tagValue(event, "title");
+        if (title) wrap.appendChild(el("div", "font-semibold text-gray-100", title));
+        const seen = new Set();
+        if (event.content) {
+          const desc = el("div", "text-sm text-gray-300");
+          renderRichText(desc, event.content, seen);
+          wrap.appendChild(desc);
+        }
+        appendImetaMedia(wrap, event, seen);
+        return wrap;
+      }
+
+      function renderVideoEvent(event) {
+        const wrap = el("div", "space-y-2");
+        const title = tagValue(event, "title");
+        if (title) wrap.appendChild(el("div", "font-semibold text-gray-100", title));
+        if (event.kind === 22) wrap.appendChild(badge("Short / vertical", "bg-purple-900/60 text-purple-300"));
+        const seen = new Set();
+        appendImetaMedia(wrap, event, seen);
+        const dur = tagValue(event, "duration");
+        if (dur) wrap.appendChild(el("div", "text-xs text-gray-500", `Duration: ${dur}s`));
+        if (event.content) {
+          const desc = el("div", "text-sm text-gray-300 mt-1");
+          renderRichText(desc, event.content, seen);
+          wrap.appendChild(desc);
+        }
+        return wrap;
+      }
+
+      function renderFileMeta(event) {
+        const wrap = el("div", "space-y-2");
+        const url = tagValue(event, "url");
+        const mime = tagValue(event, "m");
+        if (url) {
+          const type = mediaTypeFromMime(mime) || mediaTypeFromUrl(url) || "image";
+          wrap.appendChild(mediaElement(url, type, tagValue(event, "image") || tagValue(event, "thumb")));
+        }
+        const meta = [mime, tagValue(event, "dim"), tagValue(event, "size") && `${tagValue(event, "size")} bytes`]
+          .filter(Boolean)
+          .join(" · ");
+        if (meta) wrap.appendChild(el("div", "text-xs text-gray-500", meta));
+        if (event.content) wrap.appendChild(el("div", "text-sm text-gray-300", event.content));
+        return wrap;
+      }
+
+      function renderLongForm(event) {
+        const wrap = el("div", "space-y-3");
+        const image = tagValue(event, "image");
+        if (image) {
+          const hero = mediaElement(image, "image");
+          hero.className = "w-full max-h-56 object-cover rounded-lg";
+          wrap.appendChild(hero);
+        }
+        const title = tagValue(event, "title");
+        if (title) wrap.appendChild(el("h2", "text-xl font-bold text-gray-100", title));
+        const summary = tagValue(event, "summary");
+        if (summary) wrap.appendChild(el("p", "text-sm text-gray-400 italic", summary));
+        const body = el("div", "md text-gray-200");
+        try {
+          body.innerHTML = DOMPurify.sanitize(marked.parse(event.content || ""));
+        } catch (_) {
+          renderRichText(body, event.content || "");
+        }
+        wrap.appendChild(body);
+        return wrap;
+      }
+
+      function renderZap(event) {
+        const wrap = el("div", "space-y-1 text-sm");
+        let sats = null;
+        const amountTag = tagValue(event, "amount");
+        if (amountTag && /^\d+$/.test(amountTag)) sats = Math.round(Number(amountTag) / 1000);
+        if (sats == null) {
+          // Try the embedded zap request (NIP-57 description tag).
+          try {
+            const req = JSON.parse(tagValue(event, "description") || "{}");
+            const a = (req.tags || []).find((t) => t[0] === "amount");
+            if (a && /^\d+$/.test(a[1])) sats = Math.round(Number(a[1]) / 1000);
+          } catch (_) {}
+        }
+        wrap.appendChild(
+          el("div", "text-2xl font-bold text-yellow-400", sats != null ? `⚡ ${sats.toLocaleString()} sats` : "⚡ Zap")
+        );
+        const recipient = tagValue(event, "p");
+        if (recipient) {
+          let npub = "";
+          try {
+            npub = nip19.npubEncode(recipient);
+          } catch (_) {}
+          const r = el("div", "text-gray-400");
+          r.append("to ");
+          r.appendChild(anchor(`https://njump.me/${npub || recipient}`, short(npub || recipient, 12, 8)));
+          wrap.appendChild(r);
+        }
+        if (event.content) wrap.appendChild(el("div", "text-gray-300", `“${event.content}”`));
+        return wrap;
+      }
+
+      // ---- Platform-specific renderers ---------------------------------------
+      function renderBitvid(event, payload) {
+        const wrap = el("div", "space-y-2");
+        if (payload.title) wrap.appendChild(el("div", "font-semibold text-gray-100", payload.title));
+        const flags = el("div", "flex flex-wrap gap-1");
+        if (payload.isPrivate) flags.appendChild(badge("🔒 Private", "bg-gray-700 text-gray-300"));
+        if (payload.isNsfw) flags.appendChild(badge("NSFW", "bg-red-900/60 text-red-300"));
+        if (payload.isForKids) flags.appendChild(badge("Kids", "bg-green-900/60 text-green-300"));
+        if (flags.childNodes.length) wrap.appendChild(flags);
+        if (payload.url) {
+          wrap.appendChild(mediaElement(payload.url, mediaTypeFromUrl(payload.url) || "video", payload.thumbnail));
+        } else if (payload.thumbnail) {
+          wrap.appendChild(mediaElement(payload.thumbnail, "image"));
+        }
+        if (payload.magnet) {
+          wrap.appendChild(anchor(payload.magnet, "🧲 WebTorrent magnet", "text-orange-400 underline break-all text-sm"));
+        }
+        if (payload.description) {
+          const d = el("div", "text-sm text-gray-300");
+          renderRichText(d, payload.description);
+          wrap.appendChild(d);
+        }
+        return wrap;
+      }
+
+      function renderVoxvera(event, payload) {
+        const wrap = el("div", "rounded-lg bg-gray-900 p-4 space-y-1 text-center");
+        if (payload.headline) wrap.appendChild(el("div", "text-xs uppercase tracking-widest text-orange-400", payload.headline));
+        if (payload.title) wrap.appendChild(el("div", "text-2xl font-extrabold text-gray-100", payload.title));
+        if (payload.subtitle) wrap.appendChild(el("div", "text-sm text-gray-400", payload.subtitle));
+        if (payload.content) {
+          const c = el("div", "text-sm text-gray-300 text-left mt-2");
+          renderRichText(c, payload.content);
+          wrap.appendChild(c);
+        }
+        if (payload.url) {
+          const u = el("div", "mt-2 text-sm");
+          if (payload.url_message) u.append(payload.url_message + " ");
+          u.appendChild(anchor(payload.url, shortUrl(payload.url)));
+          wrap.appendChild(u);
+        }
+        if (payload.footer_message) wrap.appendChild(el("div", "text-xs text-gray-600 mt-2 font-mono", payload.footer_message));
+        return wrap;
+      }
+
+      function renderArtstr(event, payload) {
+        const wrap = el("div", "space-y-1");
+        const title = tagValue(event, "title") || (payload && payload.meta && payload.meta.title);
+        if (title) wrap.appendChild(el("div", "font-semibold text-gray-100", title));
+        const bits = [tagValue(event, "category"), payload && payload.templateType, payload && payload.templateMode]
+          .filter(Boolean)
+          .join(" · ");
+        if (bits) wrap.appendChild(el("div", "text-xs text-gray-500", bits));
+        wrap.appendChild(el("div", "text-sm text-gray-400", "🎨 Artstr Studio design — open externally to view the canvas."));
+        return wrap;
+      }
+
+      // ---- Preview dispatcher ------------------------------------------------
+      function renderPreview(event, depth) {
+        depth = depth || 0;
+        if (depth > 2) return null; // guard against repost recursion
+
+        const payload = parseContent(event);
+        const client = detectClient(event, payload);
+        if (client === "bitvid" && payload) return renderBitvid(event, payload);
+        if (client === "voxvera" && payload) return renderVoxvera(event, payload);
+        if (client === "artstr") return renderArtstr(event, payload);
+
+        switch (event.kind) {
+          case 0:
+            return renderProfile(event);
+          case 7:
+            return renderReaction(event);
+          case 6:
+          case 16:
+            return renderRepost(event, depth);
+          case 20:
+            return renderPicture(event);
+          case 21:
+          case 22:
+            return renderVideoEvent(event);
+          case 1063:
+            return renderFileMeta(event);
+          case 9735:
+            return renderZap(event);
+          case 30023:
+          case 30024:
+            return renderLongForm(event);
+          case 1:
+          case 1111:
+          case 1311:
+          case 42:
+          case 9802:
+            return renderTextNote(event);
+          default:
+            return event.content ? renderTextNote(event) : null;
+        }
+      }
+
+      // ---- Main event card ---------------------------------------------------
+      function renderEvent(event, relaysUsed) {
+        const result = $("result");
+        result.innerHTML = "";
+        const pointers = buildPointers(event, relaysUsed);
+
+        const card = el("div", "bg-gray-800 rounded-xl p-5 space-y-4 text-left");
+
+        // Header: kind badge + signature
+        const header = el("div", "flex flex-wrap items-center gap-2");
+        header.appendChild(
+          el(
+            "span",
+            "px-2 py-1 rounded-md text-xs font-semibold bg-gradient-to-r from-purple-600 to-orange-500 text-white",
+            `Kind ${event.kind} · ${kindLabel(event.kind)}`
+          )
+        );
+        const clientTag = tagValue(event, "client");
+        if (clientTag) header.appendChild(badge("via " + clientTag, "bg-gray-700 text-gray-300"));
+        let sigValid = false;
+        try {
+          sigValid = verifyEvent(event);
+        } catch (_) {}
+        header.appendChild(
+          badge(
+            sigValid ? "✓ Signature valid" : "✗ Signature invalid",
+            sigValid ? "bg-green-900/60 text-green-300" : "bg-red-900/60 text-red-300"
+          )
+        );
+        card.appendChild(header);
+
+        // Rich preview
+        const preview = renderPreview(event);
+        if (preview) {
+          const wrap = section("Preview");
+          wrap.appendChild(preview);
+          card.appendChild(wrap);
+        }
+
+        // Meta grid
+        const meta = el("div", "grid gap-1.5 text-sm");
+        const addRow = (label, value, title) => {
+          const row = el("div", "flex gap-2");
+          row.appendChild(el("span", "text-gray-500 shrink-0 w-24", label));
+          const v = el("span", "text-gray-200 font-mono break-all", value);
+          if (title) v.title = title;
+          row.appendChild(v);
+          meta.appendChild(row);
+        };
+        let npub = "";
+        try {
+          npub = nip19.npubEncode(event.pubkey);
+        } catch (_) {}
+        addRow("Author", npub ? short(npub, 14, 10) : short(event.pubkey), npub || event.pubkey);
+        const date = new Date(event.created_at * 1000);
+        addRow("Created", `${date.toLocaleString()} · ${relativeTime(event.created_at)}`);
+        addRow("Event ID", pointers.note ? short(pointers.note, 14, 10) : short(event.id), pointers.note || event.id);
+        if (event.tags && event.tags.length)
+          addRow("Tags", `${event.tags.length} tag${event.tags.length === 1 ? "" : "s"}`);
+        card.appendChild(meta);
+
+        // External viewers
+        const links = el("div", "flex flex-wrap gap-2 pt-1");
+        const njumpPointer = pointers.naddr || pointers.nevent || event.id;
+        links.appendChild(
+          anchor(
+            `https://njump.me/${njumpPointer}`,
+            "Open in njump",
+            "text-xs px-3 py-1 rounded-md bg-gray-700 hover:bg-gray-600 text-gray-200 no-underline"
+          )
+        );
+        const clientKey = detectClient(event, parseContent(event));
+        if (clientKey && CLIENTS[clientKey]) {
+          const c = CLIENTS[clientKey];
+          const viewUrl = c.view(pointers);
+          if (viewUrl)
+            links.appendChild(
+              anchor(
+                viewUrl,
+                `Open on ${c.label}`,
+                "text-xs px-3 py-1 rounded-md bg-purple-700 hover:bg-purple-600 text-white no-underline"
+              )
+            );
+        }
+        card.appendChild(links);
+
+        // Raw JSON + copy
+        const rawJson = JSON.stringify(event, null, 2);
+        const rawWrap = section();
+        const rawHeader = el("div", "flex items-center justify-between");
+        rawHeader.appendChild(el("div", "text-xs uppercase tracking-wide text-gray-500", "Raw JSON"));
+        const copyBtn = el(
+          "button",
+          "text-xs px-3 py-1 rounded-md bg-gray-700 hover:bg-gray-600 text-gray-200 transition",
+          "Copy JSON"
+        );
+        copyBtn.type = "button";
+        copyBtn.onclick = async () => {
+          const ok = await copyText(rawJson);
+          copyBtn.textContent = ok ? "Copied!" : "Copy failed";
+          copyBtn.classList.toggle("bg-green-700", ok);
+          setTimeout(() => {
+            copyBtn.textContent = "Copy JSON";
+            copyBtn.classList.remove("bg-green-700");
+          }, 1500);
+        };
+        rawHeader.appendChild(copyBtn);
+        rawWrap.appendChild(rawHeader);
+        const truncated = rawJson.length > RAW_DISPLAY_LIMIT;
+        const shown = truncated ? rawJson.slice(0, RAW_DISPLAY_LIMIT) + "\n… (truncated for display)" : rawJson;
+        rawWrap.appendChild(el("pre", "bg-gray-900 p-4 rounded-lg overflow-auto max-h-96 text-sm", shown));
+        if (truncated)
+          rawWrap.appendChild(
+            el("div", "text-xs text-gray-500", "Event is large — display truncated, but Copy JSON copies the full event.")
+          );
+        card.appendChild(rawWrap);
+
+        if (relaysUsed && relaysUsed.length)
+          card.appendChild(
+            el("div", "text-xs text-gray-600", `Queried ${relaysUsed.length} relay${relaysUsed.length === 1 ? "" : "s"}`)
+          );
+
+        result.appendChild(card);
       }
 
       function showError(msg) {
-        const resultDiv = document.getElementById("result");
-        resultDiv.innerHTML = `<p class="text-red-500">${msg}</p>`;
+        $("result").innerHTML = "";
+        $("result").appendChild(
+          el("div", "bg-red-900/40 border border-red-800 text-red-300 rounded-lg p-4 text-sm", msg)
+        );
       }
+
+      function showLoading() {
+        $("result").innerHTML = "";
+        const wrap = el("div", "flex items-center justify-center gap-3 text-gray-400 py-6");
+        wrap.appendChild(el("div", "spin h-5 w-5 rounded-full border-2 border-gray-600 border-t-purple-500"));
+        wrap.appendChild(el("span", null, "Searching relays…"));
+        $("result").appendChild(wrap);
+      }
+
+      // ---- Relay management --------------------------------------------------
+      function loadRelays() {
+        try {
+          const saved = localStorage.getItem(RELAY_KEY);
+          if (saved) {
+            const arr = JSON.parse(saved);
+            if (Array.isArray(arr) && arr.length) return arr;
+          }
+        } catch (_) {}
+        return DEFAULT_RELAYS;
+      }
+      const parseRelayInput = () =>
+        $("relays")
+          .value.split(/\s+/)
+          .map((r) => r.trim())
+          .filter(Boolean);
+      function setRelayTextarea(relays) {
+        $("relays").value = relays.join("\n");
+        updateRelayCount();
+      }
+      function saveRelays(relays) {
+        try {
+          localStorage.setItem(RELAY_KEY, JSON.stringify(relays));
+        } catch (_) {}
+      }
+      const updateRelayCount = () => ($("relayCount").textContent = `(${parseRelayInput().length})`);
+
+      // ---- Input parsing -----------------------------------------------------
+      function buildQuery(rawInput) {
+        let input = rawInput.trim();
+        if (input.toLowerCase().startsWith("nostr:")) input = input.slice(6);
+
+        if (/^[0-9a-f]{64}$/i.test(input)) return { filter: { ids: [input.toLowerCase()] }, hintRelays: [] };
+
+        let decoded;
+        try {
+          decoded = nip19.decode(input);
+        } catch (_) {
+          throw new Error("Couldn't parse input. Expected hex, note1, nevent1, naddr1, npub1, or nprofile1.");
+        }
+        switch (decoded.type) {
+          case "note":
+            return { filter: { ids: [decoded.data] }, hintRelays: [] };
+          case "nevent":
+            return { filter: { ids: [decoded.data.id] }, hintRelays: decoded.data.relays || [] };
+          case "naddr": {
+            const { kind, pubkey, identifier, relays } = decoded.data;
+            const filter = { kinds: [kind], authors: [pubkey] };
+            if (identifier) filter["#d"] = [identifier];
+            return { filter, hintRelays: relays || [] };
+          }
+          case "npub":
+            return { filter: { kinds: [0], authors: [decoded.data] }, hintRelays: [] };
+          case "nprofile":
+            return { filter: { kinds: [0], authors: [decoded.data.pubkey] }, hintRelays: decoded.data.relays || [] };
+          default:
+            throw new Error(`Unsupported identifier type: ${decoded.type}`);
+        }
+      }
+
+      // ---- Submit ------------------------------------------------------------
+      $("form").onsubmit = async (e) => {
+        e.preventDefault();
+        const input = $("eventId").value.trim();
+        if (!input) return showError("Please enter an event ID or identifier.");
+
+        let query;
+        try {
+          query = buildQuery(input);
+        } catch (err) {
+          return showError(err.message);
+        }
+
+        const userRelays = parseRelayInput();
+        const relays = [...new Set([...userRelays, ...query.hintRelays])].filter(Boolean);
+        if (!relays.length) return showError("No relays configured. Add at least one relay or reset to defaults.");
+        const bad = relays.find((r) => !/^wss?:\/\//.test(r));
+        if (bad) return showError(`Invalid relay URL "${bad}" — must start with wss:// or ws://`);
+        saveRelays(userRelays.length ? userRelays : DEFAULT_RELAYS);
+
+        showLoading();
+        const pool = new SimplePool();
+        try {
+          const event = await Promise.race([
+            pool.get(relays, query.filter),
+            new Promise((resolve) => setTimeout(() => resolve("__timeout__"), TIMEOUT_MS)),
+          ]);
+          if (event === "__timeout__")
+            showError(`Timed out — no relay returned this event within ${TIMEOUT_MS / 1000}s.`);
+          else if (!event) showError("Event not found on the configured relays. Try adding the relay it lives on.");
+          else renderEvent(event, relays);
+        } catch (err) {
+          showError("Error: " + (err && err.message ? err.message : String(err)));
+        } finally {
+          try {
+            pool.close(relays);
+          } catch (_) {}
+        }
+      };
+
+      // ---- Init --------------------------------------------------------------
+      setRelayTextarea(loadRelays());
+      $("relays").addEventListener("input", updateRelayCount);
+      $("resetRelays").addEventListener("click", () => {
+        setRelayTextarea(DEFAULT_RELAYS);
+        saveRelays(DEFAULT_RELAYS);
+      });
     </script>
   </body>
 </html>
