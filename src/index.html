@@ -1037,11 +1037,11 @@
         }
       }
 
-      // ---- Submit ------------------------------------------------------------
-      $("form").onsubmit = async (e) => {
-        e.preventDefault();
-        const input = $("eventId").value.trim();
+      // ---- Search ------------------------------------------------------------
+      async function runSearch(input) {
+        input = (input || "").trim();
         if (!input) return showError("Please enter an event ID or identifier.");
+        $("eventId").value = input;
 
         let query;
         try {
@@ -1075,7 +1075,40 @@
             pool.close(relays);
           } catch (_) {}
         }
+      }
+
+      // ---- URL deep-linking (?e=<identifier>, or a bare #<identifier>) -------
+      function inputFromUrl() {
+        const params = new URLSearchParams(location.search);
+        let v = params.get("e") || params.get("id") || params.get("q");
+        if (!v && location.hash.length > 1) v = decodeURIComponent(location.hash.slice(1));
+        return v ? v.trim() : "";
+      }
+      function writeUrl(input, replace) {
+        const url = new URL(location.href);
+        url.searchParams.set("e", input);
+        url.hash = "";
+        history[replace ? "replaceState" : "pushState"]({ e: input }, "", url.pathname + url.search);
+      }
+
+      $("form").onsubmit = (e) => {
+        e.preventDefault();
+        const input = $("eventId").value.trim();
+        if (!input) return showError("Please enter an event ID or identifier.");
+        writeUrl(input, false);
+        runSearch(input);
       };
+
+      // Back/forward navigation re-runs (or clears) the search.
+      window.addEventListener("popstate", () => {
+        const v = inputFromUrl();
+        if (v) {
+          runSearch(v);
+        } else {
+          $("eventId").value = "";
+          $("result").innerHTML = "";
+        }
+      });
 
       // ---- Init --------------------------------------------------------------
       setRelayTextarea(loadRelays());
@@ -1084,6 +1117,13 @@
         setRelayTextarea(DEFAULT_RELAYS);
         saveRelays(DEFAULT_RELAYS);
       });
+
+      // Auto-run a search if the page was opened with an identifier in the URL.
+      const initial = inputFromUrl();
+      if (initial) {
+        writeUrl(initial, true); // normalize a bare #hash into ?e=
+        runSearch(initial);
+      }
     </script>
   </body>
 </html>
